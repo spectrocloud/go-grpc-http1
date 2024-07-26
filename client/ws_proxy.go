@@ -50,6 +50,7 @@ type http2WebSocketProxy struct {
 	insecure   bool
 	endpoint   string
 	httpClient *http.Client
+	urlRewrite UrlRewrite
 }
 
 type websocketConn struct {
@@ -230,6 +231,9 @@ func (h *http2WebSocketProxy) ServeHTTP(w http.ResponseWriter, req *http.Request
 	url := *req.URL // Copy the value, so we do not overwrite the URL.
 	url.Scheme = scheme
 	url.Host = h.endpoint
+	if h.urlRewrite != nil { // if urlRewrite is available, call it to modify the URL.
+		url = *h.urlRewrite(&url)
+	}
 	conn, resp, err := websocket.Dial(req.Context(), url.String(), &websocket.DialOptions{
 		// Add the gRPC headers to the WebSocket handshake request.
 		HTTPHeader:   req.Header,
@@ -292,16 +296,17 @@ func (h *http2WebSocketProxy) ServeHTTP(w http.ResponseWriter, req *http.Request
 	_ = conn.Close(websocket.StatusNormalClosure, "")
 }
 
-func createClientWSProxy(endpoint string, tlsClientConf *tls.Config) (*http.Server, pipeconn.DialContextFunc, error) {
+func createClientWSProxy(endpoint string, tlsClientConf *tls.Config, urlRewrite UrlRewrite) (*http.Server, pipeconn.DialContextFunc, error) {
 	handler := &http2WebSocketProxy{
 		insecure: tlsClientConf == nil,
 		endpoint: endpoint,
 		httpClient: &http.Client{
 			Transport: &http.Transport{
 				TLSClientConfig: tlsClientConf,
-				Proxy: http.ProxyFromEnvironment,
+				Proxy:           http.ProxyFromEnvironment,
 			},
 		},
+		urlRewrite: urlRewrite,
 	}
 	return makeProxyServer(handler)
 }
