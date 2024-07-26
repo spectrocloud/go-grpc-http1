@@ -177,7 +177,7 @@ func ConnectViaProxy(ctx context.Context, endpoint string, tlsClientConf *tls.Co
 	var err error
 
 	if connectOpts.useWebSocket {
-		proxy, dialCtx, err = createClientWSProxy(endpoint, tlsClientConf)
+		proxy, dialCtx, err = createClientWSProxy(endpoint, tlsClientConf, connectOpts.urlRewrite)
 	} else {
 		proxy, dialCtx, err = createClientProxy(endpoint, tlsClientConf, connectOpts.forceHTTP2, connectOpts.forceDowngrade, connectOpts.extraH2ALPNs, connectOpts.contentType)
 	}

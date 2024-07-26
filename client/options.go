@@ -14,7 +14,11 @@
 
 package client
 
-import "google.golang.org/grpc"
+import (
+	"net/url"
+
+	"google.golang.org/grpc"
+)
 
 type connectOptions struct {
 	dialOpts       []grpc.DialOption
@@ -23,6 +27,7 @@ type connectOptions struct {
 	forceDowngrade bool
 	useWebSocket   bool
 	contentType    string
+	urlRewrite     UrlRewrite
 }
 
 // ConnectOption is an option that can be passed to the `ConnectViaProxy` method.
@@ -107,4 +112,10 @@ type contentTypeOption string
 
 func (o contentTypeOption) apply(opts *connectOptions) {
 	opts.contentType = string(o)
+}
+
+type UrlRewrite func(u *url.URL) *url.URL
+
+func (o UrlRewrite) apply(opts *connectOptions) {
+	opts.urlRewrite = o
 }
