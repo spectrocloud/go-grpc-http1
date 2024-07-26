@@ -14,7 +14,11 @@
 
 package client
 
-import "google.golang.org/grpc"
+import (
+	"net/url"
+
+	"google.golang.org/grpc"
+)
 
 type connectOptions struct {
 	dialOpts       []grpc.DialOption
@@ -23,6 +27,7 @@ type connectOptions struct {
 	forceDowngrade bool
 	useWebSocket   bool
 	contentType    string
+	urlRewrite     UrlRewrite
 }
 
 // ConnectOption is an option that can be passed to the `ConnectViaProxy` method.
@@ -73,6 +78,14 @@ func WithContentType(contentType string) ConnectOption {
 	return contentTypeOption(contentType)
 }
 
+// WithUrlPrefix returns a connection option that instructs the
+// client proxy to append a prefix to the path in the gRPC URL for sending requests to the websocket server.
+// For example, the gRPC URL is https://localhost:443/protobuf.Math/Max. We could expose the websocket service as
+// https://localhost:443/grpc-ws/protobuf.Math/Max. In this case, we can call WithUrlPrefix("grpc-ws")
+func WithUrlPrefix(prefix string) ConnectOption {
+	return urlPrefixOption(prefix)
+}
+
 type dialOptsOption []grpc.DialOption
 
 func (o dialOptsOption) apply(opts *connectOptions) {
@@ -107,4 +120,19 @@ type contentTypeOption string
 
 func (o contentTypeOption) apply(opts *connectOptions) {
 	opts.contentType = string(o)
+}
+
+type urlPrefixOption string
+
+func (o urlPrefixOption) apply(opts *connectOptions) {
+	opts.urlRewrite = func(u *url.URL) *url.URL {
+		u.Path = "/" + string(o) + u.Path
+		return u
+	}
+}
+
+type UrlRewrite func(u *url.URL) *url.URL
+
+func (o UrlRewrite) apply(opts *connectOptions) {
+	opts.urlRewrite = o
 }
